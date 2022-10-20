@@ -50,3 +50,5 @@ Then run the following commands:
 pip install -r requirements.txt
 python bot.py
 ```
+
+Now try the bot by the link http://t.me/another_asr_bot!
