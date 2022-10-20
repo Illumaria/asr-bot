@@ -30,8 +30,7 @@ def send_transcribe_request(update: Update, context: CallbackContext) -> None:
         data=voice_message_byte_array,
         headers={"Content-Type": "application/octet-stream"},
     )
-    update.message.reply_text(f"Response status code: {response.status_code}")
-    update.message.reply_text(f"Response data: {response.text[:1000]}")
+    update.message.reply_text(f"You said: {response.text}")
 
 
 def main() -> None:
