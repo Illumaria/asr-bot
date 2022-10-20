@@ -5,7 +5,7 @@ import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from src.constants import MODEL_NAME, MODEL_VERSION, URL
-from src.utils import connect_to_triton_inference_server
+from src.utils import connect_to_triton_inference_server, postprocess
 from tritonclient.grpc import service_pb2
 
 grpc_stub, model_metadata, model_config = connect_to_triton_inference_server(
@@ -42,7 +42,7 @@ def create_request(
     output = service_pb2.ModelInferRequest().InferRequestedOutputTensor(
         name=output_name,
     )
-    # output.parameters['classification'].int64_param = args.classes
+    output.parameters["classification"].int64_param = 29
     request.outputs.extend([output])
 
     # request.ClearField("inputs")
@@ -54,9 +54,8 @@ def create_request(
     return request
 
 
-def make_prediction(data: bytes) -> str:
-    # data = np.asarray(data, dtype=np.float32).reshape(1, -1, 1)
-    numpy_data = np.random.rand(1, 64, 1)
+def make_transcription(data: bytes) -> str:
+    numpy_data = np.asarray(bytearray(data), dtype=np.float32).reshape((1, -1, 1))
     request = create_request(
         data=numpy_data,
         model_name=model_metadata.name,
@@ -67,15 +66,9 @@ def make_prediction(data: bytes) -> str:
 
     # send request
     response = grpc_stub.ModelInfer(request)
-
-    response = str(response)[:100]
+    response = postprocess(response)
 
     return response
-
-
-# @app.get("/")
-# def root() -> str:
-#     return "This is the root entrypoint of our application."
 
 
 @app.get("/health")
@@ -94,7 +87,7 @@ async def predict(data: bytes = Depends(parse_body)) -> str:
         raise HTTPException(
             status_code=400, detail=f"Expected data of type bytearray, got {type(data)}"
         )
-    return make_prediction(data)
+    return make_transcription(data)
 
 
 if __name__ == "__main__":
