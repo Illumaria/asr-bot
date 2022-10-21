@@ -1,4 +1,7 @@
-FROM python:3.9-slim
+FROM python:3.10-slim
+
+RUN apt-get update \
+    && apt-get -y install libsndfile-dev libopus0 libopusfile0 libvorbisfile3
 
 WORKDIR /app
 
