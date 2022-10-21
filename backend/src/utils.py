@@ -1,10 +1,18 @@
-import struct
+import os
+import uuid
 from typing import Any, Tuple
 
 import grpc
+import librosa
 import numpy as np
+import pyogg
+import torch
+from src.constants import ALPHABET
+from src.features import FilterbankFeatures
 from tritonclient.grpc import service_pb2
 from tritonclient.grpc.service_pb2_grpc import GRPCInferenceServiceStub
+
+featurizer = FilterbankFeatures()
 
 
 def connect_to_triton_inference_server(
@@ -28,17 +36,33 @@ def connect_to_triton_inference_server(
     return grpc_stub, model_metadata, model_config
 
 
-def deserialize_bytes_tensor(encoded_tensor: Any) -> np.ndarray:
-    strs = list()
-    offset = 0
-    val_buf = encoded_tensor
-    while offset < len(val_buf):
-        length = struct.unpack_from("<I", val_buf, offset)[0]
-        offset += 4
-        sb = struct.unpack_from("<{}s".format(length), val_buf, offset)[0]
-        offset += length
-        strs.append(sb)
-    return np.array(strs, dtype=np.object_)
+def ogg_opus_bytes_to_numpy_array(input_bytes: bytes) -> np.ndarray:
+    temp_filename = str(uuid.uuid4())
+    with open(temp_filename, "wb") as f:
+        f.write(input_bytes)
+    input_numpy: np.ndarray = pyogg.OpusFile(f.name).as_array().transpose(1, 0)
+    os.remove(temp_filename)
+    return input_numpy
+
+
+def preprocess(numpy_data: np.ndarray) -> np.ndarray:
+    input_arr = numpy_data.astype(np.float32, order="C") / 32768.0
+    resampled_numpy = librosa.resample(input_arr, orig_sr=48000, target_sr=16000)
+    resampled_tensor = torch.as_tensor(resampled_numpy).reshape(1, -1)
+    seq_len = torch.as_tensor([resampled_tensor.size(-1)])
+
+    processed_input, _ = featurizer(resampled_tensor, seq_len)
+    return processed_input.numpy()
+
+
+def ctc_greedy_decode(predictions: np.ndarray, alphabet: str = ALPHABET) -> str:
+    previous_letter_id = blank_id = len(alphabet) - 1
+    transcription = list()
+    for letter_index in predictions:
+        if previous_letter_id != letter_index != blank_id:
+            transcription.append(alphabet[letter_index])
+        previous_letter_id = letter_index
+    return "".join(transcription)
 
 
 def postprocess(response: Any) -> str:
@@ -51,8 +75,10 @@ def postprocess(response: Any) -> str:
             f"Expected 1 output content, got {len(response.raw_output_contents)}"
         )
 
-    batched_result = deserialize_bytes_tensor(response.raw_output_contents[0])
-    content = np.reshape(batched_result, response.outputs[0].shape)
+    output_arr = np.frombuffer(
+        response.raw_output_contents[0], dtype=np.float32
+    ).reshape(response.outputs[0].shape)
+    character_probabilities = output_arr.squeeze().argmax(axis=-1)
 
-    output = "".join(x.decode().split(":")[-1] for x in content)
-    return output
+    transcription = ctc_greedy_decode(character_probabilities)
+    return transcription
