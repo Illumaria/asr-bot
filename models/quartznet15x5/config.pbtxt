@@ -1,0 +1,23 @@
+name: "quartznet15x5"
+backend: "onnxruntime"
+max_batch_size: 0
+input [
+  {
+    name: "audio_signal"
+    data_type: TYPE_FP32
+    dims: [ -1, 64, -1 ]
+  }
+]
+output [
+  {
+    name: "logprobs"
+    data_type: TYPE_FP32
+    dims: [ -1, -1, 29 ]
+    label_filename: "quartznet_labels.txt"
+  }
+]
+instance_group [
+  {
+    kind: KIND_CPU
+  }
+]
