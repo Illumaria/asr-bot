@@ -1,37 +1,32 @@
 # Automatic Speech Bot
 Telegram bot for Automatic Speech Recognition
 
+## Prerequisites
+
+* [docker-compose](https://docs.docker.com/compose/install/) >= 2.10.2
+
 ## Usage
 
-### Run Triton Inference Server and Backend Server
+1. Set the `API_TOKEN` environment variable.
 
-```shell
-./run.sh
-```
+    For Linux:
 
-### Run Telegram Bot
+    ```shell
+    export API_TOKEN=<your_api_token>
+    ```
+    For Windows PowerShell:
+    
+    ```shell
+    $env:API_TOKEN="<your_api_token>"
+    ```
 
-Set `API_TOKEN` environment variable.
+2. Run the following command:
 
-For Linux:
+    ```shell
+    docker-compose up --build -d
+    ```
 
-```shell
-export API_TOKEN=<your_api_token>
-```
-For Windows PowerShell:
-
-```shell
-$env:API_TOKEN="<your_api_token>"
-```
-
-Then run the following commands:
-
-```shell
-pip install -r requirements.txt
-python bot.py
-```
-
-Now try the bot by the link http://t.me/another_asr_bot!
+3. Now try the bot by the link http://t.me/another_asr_bot!
 
 ### About the Model
 
