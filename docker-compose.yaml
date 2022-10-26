@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  triton-inference-server:
+    image: nvcr.io/nvidia/tritonserver:21.09-py3
+    command: tritonserver --model-repository=/models --strict-model-config=false
+    ports:
+      - 8000:8000
+      - 8001:8001
+      - 8002:8002
+    volumes:
+      - ./models:/models
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/v2/health/ready"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+    restart: always
+
+  backend-server:
+    build: backend
+    ports:
+      - 5000:5000
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+    environment:
+      URL: triton-inference-server:8001
+    depends_on:
+      triton-inference-server:
+        condition: service_healthy
+
+  telegram-bot:
+    build: bot
+    restart: always
+    environment:
+      API_TOKEN: ${API_TOKEN}
+      BACKEND_URL: http://backend-server:5000
+    depends_on:
+      backend-server:
+        condition: service_healthy

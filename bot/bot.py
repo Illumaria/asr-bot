@@ -10,7 +10,9 @@ from telegram.ext import (
     Updater,
 )
 
-URL = "http://localhost:5000/predict"
+API_TOKEN = os.getenv("API_TOKEN")
+BACKEND_URL = os.getenv("BACKEND_URL")
+URL = f"{BACKEND_URL}/predict"
 
 
 def start(update: Update, context: CallbackContext) -> None:
@@ -35,11 +37,12 @@ def send_transcribe_request(update: Update, context: CallbackContext) -> None:
 
 def main() -> None:
     """Start the bot"""
-    api_token = os.getenv("API_TOKEN")
-    if not api_token:
+    if not API_TOKEN:
         raise KeyError("API_TOKEN not found in environment variables")
+    if not BACKEND_URL:
+        raise KeyError("BACKEND_URL not found in environment variables")
 
-    updater = Updater(api_token)
+    updater = Updater(API_TOKEN)
 
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CommandHandler("start", start, run_async=True))
