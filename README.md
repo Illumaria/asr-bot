@@ -1,5 +1,6 @@
-# Automatic Speech Bot
-Telegram bot for Automatic Speech Recognition
+# Automatic Speech Recognition Bot
+
+Telegram bot for Automatic Speech Recognition.
 
 ## Prerequisites
 
